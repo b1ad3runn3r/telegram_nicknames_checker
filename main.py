@@ -8,8 +8,15 @@ import os
 import aiofiles
 from aiocsv import AsyncReader
 from enum import Enum, auto
-#import logging
-#logging.basicConfig(level=logging.DEBUG)
+
+config = dotenv_values('.env')
+
+bot_token = config['BOT_TOKEN']
+api_id = int(config['API_ID'])
+api_hash = config['API_HASH']
+delay = float(config['DELAY'])
+
+bot = TelegramClient('anon', api_id, api_hash)
 
 
 class State(Enum):
@@ -33,16 +40,7 @@ async def parse_csv(path):
                 username=name[0]
             ))
             print(f'{name[0]}:\t{result}')
-            time.sleep(0.5)
-
-
-config = dotenv_values('.env')
-
-bot_token = config['BOT_TOKEN']
-api_id = int(config['API_ID'])
-api_hash = config['API_HASH']
-
-bot = TelegramClient('anon', api_id, api_hash)
+            time.sleep(delay)
 
 
 @bot.on(events.NewMessage(incoming=True, pattern="/start"))
@@ -65,7 +63,7 @@ async def bot_help(event):
     await event.reply(msg)
 
 
-#TODO: Add button handling for convinience
+# TODO: Add button handling for convinience
 @bot.on(events.NewMessage(incoming=True))
 async def parse_file(event):
 
