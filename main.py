@@ -1,6 +1,6 @@
 from dotenv import dotenv_values
 import asyncio
-from telethon import TelegramClient, events, functions
+from telethon import TelegramClient, events, functions, errors
 from telethon.utils import get_extension
 from datetime import datetime
 import time
@@ -32,14 +32,31 @@ def get_current_time():
     return dt_string
 
 
-async def parse_csv(path):
+async def parse_csv(event, path):
+    good_names = []
+    cnt = 0
     async with aiofiles.open(path, mode="r", encoding="utf-8", newline="") as afp:
         async for name in AsyncReader(afp):
-            result = await bot(functions.account.CheckUsernameRequest(
-                username=name[0]
-            ))
-            print(f'{name[0]}:\t{result}')
-            time.sleep(delay)
+            cnt += 1
+            try:
+                result = await bot(functions.account.CheckUsernameRequest(
+                    username=name[0]
+                ))
+
+                if result:
+                    good_names.append('@' + name[0])
+            except errors.FloodWaitError as fW:
+                time.sleep(fW.seconds)
+            except errors.UsernameInvalidError as uI:
+                continue
+
+    msg = '\n'.join(good_names)
+
+    good_p = 100 * (len(good_names) / cnt)
+    bad_p = 100 - good_p
+
+    msg = msg + '\n\n' + 'Stats:\n' + f'Good:\t{good_p}%\n' + f'Bad:\t{bad_p}%'
+    return msg
 
 
 @bot.on(events.NewMessage(incoming=True, pattern="/start"))
@@ -95,7 +112,13 @@ async def parse_file(event):
                 f"Accepted your file at {file_path}"
             )
 
-            await parse_csv(file_path)
+            msg = await parse_csv(event, file_path)
+            await bot.send_message(
+                event.chat_id,
+                msg
+            )
+
+
         else:
             await bot.send_message(
                 event.chat_id,
