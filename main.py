@@ -11,7 +11,6 @@ from enum import Enum, auto
 
 config = dotenv_values('.env')
 
-bot_token = config['BOT_TOKEN']
 api_id = int(config['API_ID'])
 api_hash = config['API_HASH']
 delay = float(config['DELAY'])
@@ -34,7 +33,7 @@ def get_current_time():
 
 
 async def parse_csv(path):
-    async with aiofiles.open(path, mode="r", encoding="utf-8", newline = "") as afp:
+    async with aiofiles.open(path, mode="r", encoding="utf-8", newline="") as afp:
         async for name in AsyncReader(afp):
             result = await bot(functions.account.CheckUsernameRequest(
                 username=name[0]
@@ -78,6 +77,7 @@ async def parse_file(event):
 
     elif state == State.WAIT_FILE:
         await event.respond('Working...')
+        extension = ''
         if event.document:
             extension = get_extension(event.document)
 
