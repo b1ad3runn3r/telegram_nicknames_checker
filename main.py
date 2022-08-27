@@ -3,9 +3,20 @@ import asyncio
 from telethon import TelegramClient, events, functions
 from telethon.utils import get_extension
 from datetime import datetime
+import time
 import os
 import aiofiles
 from aiocsv import AsyncReader
+from enum import Enum, auto
+#import logging
+#logging.basicConfig(level=logging.DEBUG)
+
+
+class State(Enum):
+    WAIT_FILE = auto()
+
+
+conversation_state = {}
 
 
 def get_current_time():
@@ -21,7 +32,8 @@ async def parse_csv(path):
             result = await bot(functions.account.CheckUsernameRequest(
                 username=name[0]
             ))
-            print(result)
+            print(f'{name[0]}:\t{result}')
+            time.sleep(0.5)
 
 
 config = dotenv_values('.env')
@@ -30,7 +42,7 @@ bot_token = config['BOT_TOKEN']
 api_id = int(config['API_ID'])
 api_hash = config['API_HASH']
 
-bot = TelegramClient('bot', api_id, api_hash)
+bot = TelegramClient('anon', api_id, api_hash)
 
 
 @bot.on(events.NewMessage(incoming=True, pattern="/start"))
@@ -54,39 +66,48 @@ async def bot_help(event):
 
 
 #TODO: Add button handling for convinience
-@bot.on(events.NewMessage(incoming=True, ))
+@bot.on(events.NewMessage(incoming=True))
 async def parse_file(event):
-    sender = await event.get_sender()
-    sender = sender.username
-    chat = await event.get_chat()
 
     date = get_current_time()
-    file_path = f"./tmp/{sender}_{date}"
+    file_path = f"./tmp/{event.sender_id}_{date}"
 
-    extension = get_extension(event.document)
+    state = conversation_state.get(event.sender_id)
 
-    if extension == '.csv':
-        file_path += extension
-        await bot.download_file(
-            event.document,
-            file_path
-        )
+    if state is None:
+        await event.respond('Hi! Please send a file')
+        conversation_state[event.sender_id] = State.WAIT_FILE
 
-        await bot.send_message(
-            event.chat_id,
-            f"Accepted your file at {file_path}"
-        )
+    elif state == State.WAIT_FILE:
+        await event.respond('Working...')
+        if event.document:
+            extension = get_extension(event.document)
 
-        await parse_csv(file_path)
-    else:
-        await bot.send_message(
-            event.chat_id,
-            "Wrong file format"
-        )
+        print(extension)
 
+        if extension == '.csv' or extension == '.xls':
+            file_path += extension
+            await bot.download_file(
+                event.document,
+                file_path
+            )
+
+            await bot.send_message(
+                event.chat_id,
+                f"Accepted your file at {file_path}"
+            )
+
+            await parse_csv(file_path)
+        else:
+            await bot.send_message(
+                event.chat_id,
+                "Wrong file format"
+            )
+
+        del conversation_state[event.sender_id]
 
 with bot:
-    bot.start(bot_token=bot_token)
+    bot.start()
     bot.run_until_disconnected()
 
 
