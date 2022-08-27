@@ -2,3 +2,4 @@
 .idea
 *.session
 *.session-*
+tmp/*
