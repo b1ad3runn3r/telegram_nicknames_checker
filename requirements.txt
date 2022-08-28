@@ -1,0 +1,4 @@
+aiofiles~=0.8.0
+python-dotenv~=0.20.0
+Telethon~=1.24.0
+aiocsv~=1.2.2
