@@ -32,7 +32,7 @@ def get_current_time():
     return dt_string
 
 
-async def parse_csv(event, path):
+async def parse_csv(path):
     good_names = []
     cnt = 0
     async with aiofiles.open(path, mode="r", encoding="utf-8", newline="") as afp:
@@ -45,9 +45,11 @@ async def parse_csv(event, path):
 
                 if result:
                     good_names.append('@' + name[0])
+
             except errors.FloodWaitError as fW:
                 time.sleep(fW.seconds)
-            except errors.UsernameInvalidError as uI:
+
+            except errors.UsernameInvalidError:
                 continue
 
     msg = '\n'.join(good_names)
@@ -79,7 +81,6 @@ async def bot_help(event):
     await event.reply(msg)
 
 
-# TODO: Add button handling for convinience
 @bot.on(events.NewMessage(incoming=True))
 async def parse_file(event):
 
@@ -98,8 +99,6 @@ async def parse_file(event):
         if event.document:
             extension = get_extension(event.document)
 
-        print(extension)
-
         if extension == '.csv' or extension == '.xls':
             file_path += extension
             await bot.download_file(
@@ -107,17 +106,13 @@ async def parse_file(event):
                 file_path
             )
 
-            await bot.send_message(
-                event.chat_id,
-                f"Accepted your file at {file_path}"
-            )
-
-            msg = await parse_csv(event, file_path)
+            msg = await parse_csv(file_path)
             await bot.send_message(
                 event.chat_id,
                 msg
             )
 
+            os.remove(file_path)
 
         else:
             await bot.send_message(
@@ -127,8 +122,7 @@ async def parse_file(event):
 
         del conversation_state[event.sender_id]
 
+
 with bot:
     bot.start()
     bot.run_until_disconnected()
-
-
