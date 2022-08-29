@@ -15,6 +15,8 @@ api_hash = config['API_HASH']
 
 bot = TelegramClient('anon', api_id, api_hash)
 
+chats = []
+
 
 class State(Enum):
     WAIT_FILE = auto()
@@ -64,17 +66,17 @@ async def parse_csv(path):
     return msg, saved_path
 
 
-@bot.on(events.NewMessage(incoming=True, pattern="/start"))
+@bot.on(events.NewMessage(incoming=True, pattern="/start", chats=chats))  # Delete on commit
 async def start(event):
     sender = await event.get_sender()
     msg = f"Hello, **{sender.username}**!\
             \nThis is a username checker bot.\
-            \nPlease send me a **.csv** file and I will check."
+            \nType /test and follow further instructions"
 
     await event.reply(msg)
 
 
-@bot.on(events.NewMessage(incoming=True, pattern="/help"))
+@bot.on(events.NewMessage(incoming=True, pattern="/help", chats=chats))  # Chat id here
 async def bot_help(event):
     msg = f"/start - begin interaction with bot\
             \n/help - print this help message\
@@ -85,56 +87,57 @@ async def bot_help(event):
     await event.reply(msg)
 
 
-@bot.on(events.NewMessage(incoming=True))
+@bot.on(events.NewMessage(incoming=True, chats=chats))  # Chat id here
 async def check_nicknames(event):
+    if '/test' in event.raw_text:
 
-    date = get_current_time()
-    file_path = f"tmp/{event.sender_id}_{date}"
+        date = get_current_time()
+        file_path = f"tmp/{event.sender_id}_{date}"
 
-    state = conversation_state.get(event.sender_id)
+        state = conversation_state.get(event.sender_id)
 
-    if state is None:
-        await event.respond('Hi! Please send a file')
-        conversation_state[event.sender_id] = State.WAIT_FILE
+        if state is None:
+            await event.respond('Hi! Please send a file')
+            conversation_state[event.sender_id] = State.WAIT_FILE
 
-    elif state == State.WAIT_FILE:
-        await event.respond('Working...')
-        extension = ''
-        if event.document:
-            extension = get_extension(event.document)
-        else:
-            await bot.send_message(
-                event.chat_id,
-                "Please send me a file"
-            )
+        elif state == State.WAIT_FILE:
+            await event.respond('Working...')
+            extension = ''
+            if event.document:
+                extension = get_extension(event.document)
+            else:
+                await bot.send_message(
+                    event.chat_id,
+                    "Please send me a file"
+                )
 
-        # TODO: Finish handler if no file is sent
+            # TODO: Finish handler if no file is sent
 
-        if extension == '.csv' or extension == '.xls':
-            file_path += '.csv'
-            await bot.download_file(
-                event.document,
-                file_path
-            )
+            if extension == '.csv' or extension == '.xls':
+                file_path += '.csv'
+                await bot.download_file(
+                    event.document,
+                    file_path
+                )
 
-            msg, saved_path = await parse_csv(file_path)
-            await bot.send_file(
-                event.chat_id,
-                saved_path,
-                caption=msg
-            )
+                msg, saved_path = await parse_csv(file_path)
+                await bot.send_file(
+                    event.chat_id,
+                    saved_path,
+                    caption=msg
+                )
 
-            os.remove(file_path)
-            os.remove(saved_path)
+                os.remove(file_path)
+                os.remove(saved_path)
 
-        else:
-            await bot.send_message(
-                event.chat_id,
-                "Wrong file format"
-            )
-            # TODO: Fix issues when sending file from iPhone
+            else:
+                await bot.send_message(
+                    event.chat_id,
+                    "Wrong file format"
+                )
+                # TODO: Fix issues when sending file from iPhone
 
-        del conversation_state[event.sender_id]
+            del conversation_state[event.sender_id]
 
 
 with bot:
