@@ -3,7 +3,6 @@ import asyncio
 from telethon import TelegramClient, events, functions, errors
 from telethon.utils import get_extension
 from datetime import datetime
-import time
 import os
 import aiofiles
 from aiocsv import AsyncReader, AsyncWriter
@@ -46,7 +45,7 @@ async def parse_csv(path):
                     good_names.append(['@' + name[0]])
 
             except errors.FloodWaitError as fW:
-                time.sleep(fW.seconds)
+                await asyncio.sleep(fW.seconds)
 
             except errors.UsernameInvalidError:
                 continue
@@ -61,7 +60,7 @@ async def parse_csv(path):
     bad_p = 100 - good_p
 
     msg = 'Stats:\n' + f'Good:\t{good_p}%\n' + f'Bad:\t{bad_p}%'
-    
+
     return msg, saved_path
 
 
